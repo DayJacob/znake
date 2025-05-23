@@ -22,6 +22,16 @@ const Snake = struct {
     direction: Direction,
     length: u8,
 
+    pub fn init(pl: *Snake) void {
+        pl.*.position = undefined;
+        pl.*.direction = Direction.DOWN;
+        pl.*.length = 3;
+
+        for (0..pl.*.length) |i| {
+            pl.*.position[i] = Vec2.init(0, 0);
+        }
+    }
+
     pub fn drawPlayer(pl: Snake) void {
         for (0..pl.length) |i| {
             rl.drawRectangle(@intFromFloat(pl.position[i].x), @intFromFloat(pl.position[i].y), CELL_SIZE, CELL_SIZE, .green);
@@ -37,6 +47,16 @@ const Game = struct {
     moveAllowed: bool,
     prevPos: [MAX_SNAKE_LEN]Vec2,
     frameCounter: u64,
+
+    pub fn init(game: *Game) void {
+        game.*.isRunning = true;
+        game.*.item = Vec2.init(@floatFromInt(rl.getRandomValue(1, GRID_WIDTH - 1)), @floatFromInt(rl.getRandomValue(1, GRID_WIDTH - 1)));
+        game.*.score = 0;
+        game.*.moveAllowed = false;
+        game.*.prevPos = undefined;
+        game.*.frameCounter = 0;
+        game.*.player.*.init();
+    }
 
     pub fn drawFood(game: Game) void {
         // 0 -> 25; 1 -> 75; etc.
@@ -91,7 +111,32 @@ const Game = struct {
                 }
             }
 
+            // check collision with food
+            if (pl.*.position[POS_HEAD].x == (game.*.item.x * CELL_SIZE) and pl.*.position[POS_HEAD].y == (game.*.item.y * CELL_SIZE)) {
+                game.*.score += 10;
+                pl.*.position[pl.*.length] = game.*.prevPos[pl.*.length - 1];
+                pl.*.length += 1;
+
+                game.*.item = Vec2.init(@floatFromInt(rl.getRandomValue(1, GRID_WIDTH - 1)), @floatFromInt(rl.getRandomValue(1, GRID_WIDTH - 1)));
+            }
+
+            // check collision with wall
+            if (pl.*.position[POS_HEAD].x >= SCREEN_SIZE or pl.*.position[POS_HEAD].x < 0 or pl.*.position[POS_HEAD].y >= SCREEN_SIZE or pl.*.position[POS_HEAD].y < 0) {
+                game.*.isRunning = false;
+            }
+
+            // check collision with self
+            for (1..pl.*.length) |i| {
+                if (pl.*.position[POS_HEAD].x == pl.*.position[i].x and pl.*.position[POS_HEAD].y == pl.*.position[i].y) {
+                    game.*.isRunning = false;
+                }
+            }
+
             game.*.frameCounter += 1;
+        } else {
+            if (rl.isKeyPressed(.enter)) {
+                game.*.init();
+            }
         }
     }
 
@@ -101,15 +146,20 @@ const Game = struct {
 
         rl.clearBackground(.ray_white);
 
-        var i: i32 = 0;
-        while (i <= SCREEN_SIZE) {
-            rl.drawLine(i, 0, i, SCREEN_SIZE, .dark_gray);
-            rl.drawLine(0, i, SCREEN_SIZE, i, .dark_gray);
-            i += CELL_SIZE;
-        }
+        if (game.isRunning) {
+            var i: i32 = 0;
+            while (i <= SCREEN_SIZE) {
+                rl.drawLine(i, 0, i, SCREEN_SIZE, .dark_gray);
+                rl.drawLine(0, i, SCREEN_SIZE, i, .dark_gray);
+                i += CELL_SIZE;
+            }
 
-        game.drawFood();
-        game.player.*.drawPlayer();
+            game.drawFood();
+            game.player.*.drawPlayer();
+        } else {
+            rl.drawText("Game over! Press ENTER to restart.", @divFloor(SCREEN_SIZE - rl.measureText("Game over! Press ENTER to restart.", 25), 2), SCREEN_SIZE / 2, 25, .black);
+            rl.drawText(rl.textFormat("Your score: %i", .{game.score}), @divFloor(SCREEN_SIZE - rl.measureText(rl.textFormat("Your score: %i", .{game.score}), 25), 2), SCREEN_SIZE / 2 + 35, 25, .black);
+        }
     }
 };
 

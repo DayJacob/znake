@@ -18,11 +18,13 @@ const Direction = enum {
 };
 
 const Snake = struct {
+    const Self = @This();
+
     position: [MAX_SNAKE_LEN]Vec2,
     direction: Direction,
     length: u8,
 
-    pub fn init(pl: *Snake) void {
+    pub fn init(pl: *Self) void {
         pl.*.position = undefined;
         pl.*.direction = Direction.DOWN;
         pl.*.length = 3;
@@ -32,7 +34,7 @@ const Snake = struct {
         }
     }
 
-    pub fn drawPlayer(pl: Snake) void {
+    pub fn drawPlayer(pl: Self) void {
         for (0..pl.length) |i| {
             rl.drawRectangle(@intFromFloat(pl.position[i].x), @intFromFloat(pl.position[i].y), CELL_SIZE, CELL_SIZE, .green);
         }
@@ -40,6 +42,8 @@ const Snake = struct {
 };
 
 const Game = struct {
+    const Self = @This();
+
     isRunning: bool,
     player: *Snake,
     item: Vec2,
@@ -48,9 +52,9 @@ const Game = struct {
     prevPos: [MAX_SNAKE_LEN]Vec2,
     frameCounter: u64,
 
-    pub fn init(game: *Game) void {
+    pub fn init(game: *Self) void {
         game.*.isRunning = true;
-        game.*.item = Vec2.init(@floatFromInt(rl.getRandomValue(1, GRID_WIDTH - 1)), @floatFromInt(rl.getRandomValue(1, GRID_WIDTH - 1)));
+        game.*.item = Vec2.init(@floatFromInt(rl.getRandomValue(1, GRID_WIDTH - 1) * CELL_SIZE), @floatFromInt(rl.getRandomValue(1, GRID_WIDTH - 1) * CELL_SIZE));
         game.*.score = 0;
         game.*.moveAllowed = false;
         game.*.prevPos = undefined;
@@ -58,15 +62,13 @@ const Game = struct {
         game.*.player.*.init();
     }
 
-    pub fn drawFood(game: Game) void {
+    pub fn drawFood(game: Self) void {
         // 0 -> 25; 1 -> 75; etc.
         // f(x) = 25 + 50x
-        rl.drawCircle(@intFromFloat(CELL_SIZE / 2 + CELL_SIZE * game.item.x), @intFromFloat(CELL_SIZE / 2 + CELL_SIZE * game.item.y), CELL_SIZE / 2, .red);
+        rl.drawCircle(@intFromFloat(CELL_SIZE / 2 + game.item.x), @intFromFloat(CELL_SIZE / 2 + game.item.y), CELL_SIZE / 2, .red);
     }
 
-    pub fn tick(game: *Game) !void {
-        _ = std.io.getStdOut().writer();
-
+    pub fn tick(game: *Self) void {
         if (game.*.isRunning) {
             const pl = game.*.player;
 
@@ -112,12 +114,12 @@ const Game = struct {
             }
 
             // check collision with food
-            if (pl.*.position[POS_HEAD].x == (game.*.item.x * CELL_SIZE) and pl.*.position[POS_HEAD].y == (game.*.item.y * CELL_SIZE)) {
+            if (pl.*.position[POS_HEAD].x == game.*.item.x and pl.*.position[POS_HEAD].y == game.*.item.y) {
                 game.*.score += 10;
                 pl.*.position[pl.*.length] = game.*.prevPos[pl.*.length - 1];
                 pl.*.length += 1;
 
-                game.*.item = Vec2.init(@floatFromInt(rl.getRandomValue(1, GRID_WIDTH - 1)), @floatFromInt(rl.getRandomValue(1, GRID_WIDTH - 1)));
+                game.*.item = Vec2.init(@floatFromInt(rl.getRandomValue(0, GRID_WIDTH - 1) * CELL_SIZE), @floatFromInt(rl.getRandomValue(0, GRID_WIDTH - 1) * CELL_SIZE));
             }
 
             // check collision with wall
@@ -140,7 +142,7 @@ const Game = struct {
         }
     }
 
-    pub fn render(game: Game) void {
+    pub fn render(game: Self) void {
         rl.beginDrawing();
         defer rl.endDrawing();
 
@@ -157,8 +159,8 @@ const Game = struct {
             game.drawFood();
             game.player.*.drawPlayer();
         } else {
-            rl.drawText("Game over! Press ENTER to restart.", @divFloor(SCREEN_SIZE - rl.measureText("Game over! Press ENTER to restart.", 25), 2), SCREEN_SIZE / 2, 25, .black);
-            rl.drawText(rl.textFormat("Your score: %i", .{game.score}), @divFloor(SCREEN_SIZE - rl.measureText(rl.textFormat("Your score: %i", .{game.score}), 25), 2), SCREEN_SIZE / 2 + 35, 25, .black);
+            rl.drawText("Game over! Press ENTER to restart.", @divFloor(SCREEN_SIZE - rl.measureText("Game over! Press ENTER to restart.", 25), 2), SCREEN_SIZE / 2 - 35, 25, .black);
+            rl.drawText(rl.textFormat("Your score: %i", .{game.score}), @divFloor(SCREEN_SIZE - rl.measureText(rl.textFormat("Your score: %i", .{game.score}), 25), 2), SCREEN_SIZE / 2, 25, .black);
         }
     }
 };
@@ -179,7 +181,7 @@ pub fn main() !void {
 
     var game = Game{
         .isRunning = true,
-        .item = Vec2.init(@floatFromInt(rl.getRandomValue(1, GRID_WIDTH - 1)), @floatFromInt(rl.getRandomValue(1, GRID_WIDTH - 1))),
+        .item = Vec2.init(@floatFromInt(rl.getRandomValue(1, GRID_WIDTH - 1) * CELL_SIZE), @floatFromInt(rl.getRandomValue(1, GRID_WIDTH - 1) * CELL_SIZE)),
         .score = 0,
         .player = &player,
         .moveAllowed = false,
@@ -191,7 +193,7 @@ pub fn main() !void {
 
     while (!rl.windowShouldClose()) {
         // update game
-        try game.tick();
+        game.tick();
 
         // draw game
         game.render();

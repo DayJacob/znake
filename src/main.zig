@@ -91,7 +91,7 @@ const Game = struct {
                 game.*.prevPos[i] = pl.*.position[i];
             }
 
-            if (game.*.frameCounter % TICK_SPEED == 0) {
+            if (@mod(game.*.frameCounter, TICK_SPEED) == 0) {
                 switch (pl.*.direction) {
                     .DOWN => {
                         pl.*.position[POS_HEAD].y += CELL_SIZE;
